@@ -10,13 +10,11 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.StringReader;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
 
 @Component
-//@Order(value = -2147483648)
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class FixFilter implements Filter {
     @Override
@@ -27,9 +25,10 @@ public class FixFilter implements Filter {
     @Override
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
         System.out.println("fixed------------------->");
-        String body = servletRequest.getReader().lines().collect(Collectors.joining());
-        MyRequestWrapper myRequestWrapper = new MyRequestWrapper((HttpServletRequest) servletRequest, body);
+        ///String body = new BufferedReader(new InputStreamReader(servletRequest.getInputStream())).lines().collect(Collectors.joining());
+        MyRequestWrapper myRequestWrapper = new MyRequestWrapper((HttpServletRequest) servletRequest);
         filterChain.doFilter(myRequestWrapper, servletResponse);
+        //filterChain.doFilter(servletRequest, servletResponse);
     }
 
     @Override
@@ -40,13 +39,44 @@ public class FixFilter implements Filter {
     class MyRequestWrapper extends HttpServletRequestWrapper{
         private String body;
 
-        public MyRequestWrapper(HttpServletRequest request, String body) {
+        public MyRequestWrapper(HttpServletRequest request) throws IOException {
             super(request);
+            this.body = new BufferedReader(new InputStreamReader(request.getInputStream())).lines().collect(Collectors.joining());
+        }
+
+        public String getBody() {
+            return body;
         }
 
         @Override
-        public BufferedReader getReader() throws IOException {
-            return new BufferedReader(new StringReader(this.body));
+        public ServletInputStream getInputStream() throws IOException {
+
+            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8));
+
+            ServletInputStream servletInputStream = new ServletInputStream() {
+
+
+                @Override
+                public boolean isFinished() {
+                    return byteArrayInputStream.available() == 0;
+                }
+
+                @Override
+                public boolean isReady() {
+                    return true;
+                }
+
+                @Override
+                public void setReadListener(ReadListener readListener) {
+
+                }
+
+                @Override
+                public int read() throws IOException {
+                    return byteArrayInputStream.read();
+                }
+            };
+            return servletInputStream;
         }
     }
 }

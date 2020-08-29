@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class Controller {
     @PostMapping("/name")
-    Person newEmployee(@RequestBody Person person) {
+    Person newPerson(@RequestBody Person person) {
         return person;
     }
 }
